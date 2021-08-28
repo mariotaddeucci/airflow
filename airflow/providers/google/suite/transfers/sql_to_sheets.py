@@ -16,22 +16,27 @@
 # under the License.
 
 
-import abc
 import datetime
 import decimal
-import itertools
-from typing import Any, Optional, Sequence, Union
+from contextlib import closing
+from typing import Any, Iterable, Mapping, Optional, Sequence, Union
 
-from airflow.models import BaseOperator
+from airflow.operators.sql import BaseSQLOperator
 from airflow.providers.google.suite.hooks.sheets import GSheetsHook
 
 
-class SQLToGoogleSheetsOperator(BaseOperator):
+class SQLToGoogleSheetsOperator(BaseSQLOperator):
     """
     Copy data from SQL to provided Google Spreadsheet.
 
     :param sql: The SQL to execute.
     :type sql: str
+    :param conn_id: the connection ID used to connect to the database.
+    :type sql_conn_id: str
+    :param parameters: The parameters to render the SQL query with.
+    :type parameters: dict or iterable
+    :param database: name of database which overwrite the defined one in connection
+    :type database: str
     :param spreadsheet_id: The Google Sheet ID to interact with.
     :type spreadsheet_id: str
     :param spreadsheet_range: The A1 notation of the values to retrieve.
@@ -68,22 +73,28 @@ class SQLToGoogleSheetsOperator(BaseOperator):
         *,
         sql: str,
         spreadsheet_id: str,
+        sql_conn_id: str = None,
+        database: str = None,
         spreadsheet_range: str = "Sheet1",
         gcp_conn_id: str = "google_cloud_default",
         delegate_to: Optional[str] = None,
         impersonation_chain: Optional[Union[str, Sequence[str]]] = None,
+        parameters: Optional[Union[Mapping, Iterable]] = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
 
         self.sql = sql
+        self.conn_id = sql_conn_id
+        self.database = database
+        self.parameters = parameters
         self.gcp_conn_id = gcp_conn_id
         self.spreadsheet_id = spreadsheet_id
         self.spreadsheet_range = spreadsheet_range
         self.delegate_to = delegate_to
         self.impersonation_chain = impersonation_chain
 
-    def _data_prep(cursor):
+    def _data_prep(self, cursor):
         for row in cursor:
             for item in row:
                 if type(item) is datetime.date:
@@ -94,23 +105,32 @@ class SQLToGoogleSheetsOperator(BaseOperator):
                     item = float(item)
                 yield item
 
-    @abc.abstractmethod
-    def query(self):
-        """Execute DBAPI query."""
+    def _get_data(self):
+        hook = self.get_db_hook()
+        with closing(hook.get_conn()) as conn:
+            with closing(conn.cursor()) as cur:
+                self.log.info("Executing query")
+                if self.parameters is not None:
+                    cur.execute(self.sql, self.parameters)
+                else:
+                    cur.execute(self.sql)
+
+                yield [field[0] for field in cur.description]
+                yield from self._data_prep(cur.fetchall())
 
     def execute(self, context: Any) -> None:
-        self.log.info("Executing query")
-        cursor = self.query()
+        self.log.info("Getting data")
+        values = list(self._get_data())
 
+        self.log.info("Connecting to Google")
         sheet_hook = GSheetsHook(
             gcp_conn_id=self.gcp_conn_id,
             delegate_to=self.delegate_to,
             impersonation_chain=self.impersonation_chain,
         )
 
-        columns = [field[0] for field in cursor.description]
-        values = itertools.chain(columns, self._data_prep(cursor))
         self.log.info(f"Uploading data to https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}")
+
         sheet_hook.update_values(
             spreadsheet_id=self.spreadsheet_id,
             range_=self.spreadsheet_range,
