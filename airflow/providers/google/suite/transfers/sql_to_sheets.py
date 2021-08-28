@@ -54,14 +54,14 @@ class SQLToGoogleSheetsOperator(BaseOperator):
     """
 
     template_fields = [
-        'sql',
+        "sql",
         "spreadsheet_id",
         "spreadsheet_range",
         "impersonation_chain",
     ]
 
-    template_ext = ('.sql',)
-    ui_color = '#a0e08c'
+    template_ext = (".sql",)
+    ui_color = "#a0e08c"
 
     def __init__(
         self,
@@ -87,9 +87,9 @@ class SQLToGoogleSheetsOperator(BaseOperator):
         for row in cursor:
             for item in row:
                 if type(item) is datetime.date:
-                    item = item.strftime('%Y-%m-%d')
+                    item = item.strftime("%Y-%m-%d")
                 elif type(item) is datetime.datetime:
-                    item = item.strftime('%Y-%m-%d %H:%M:%S')
+                    item = item.strftime("%Y-%m-%d %H:%M:%S")
                 elif type(item) is decimal.Decimal:
                     item = float(item)
                 yield item
