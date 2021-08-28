@@ -27,7 +27,7 @@ from airflow.providers.google.suite.hooks.sheets import GSheetsHook
 
 class SQLToGoogleSheetsOperator(BaseSQLOperator):
     """
-    Copy data from SQL to provided Google Spreadsheet.
+    Copy data from SQL results to provided Google Spreadsheet.
 
     :param sql: The SQL to execute.
     :type sql: str
