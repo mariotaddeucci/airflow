@@ -65,6 +65,10 @@ class S3ToRedshiftOperator(BaseOperator):
     :type column_list: List[str]
     :param copy_options: reference to a list of COPY options
     :type copy_options: list
+    :param method: Action to be performed on execution. Available ``APPEND``, ``UPSERT`` and ``REPLACE``.
+    :type method: str
+    :param upsert_keys: List of fields to use as key on upsert action
+    :type upsert_keys: List[str]
     """
 
     template_fields = ('s3_bucket', 's3_key', 'schema', 'table', 'column_list', 'copy_options')
