@@ -107,10 +107,10 @@ class S3ToRedshiftOperator(BaseOperator):
         self.method = method
         self.upsert_keys = upsert_keys
 
-        if kwargs['truncate_table']:
+        if kwargs.get('truncate_table', False):
             self.method = 'REPLACE'
             warnings.warn(
-                """`truncate_table` parameter is deprecated. Please use `method`.""",
+                """`truncate_table` parameter is deprecated. Please use `method` parameter.""",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -174,7 +174,7 @@ class S3ToRedshiftOperator(BaseOperator):
             """
         elif self.method == 'UPSERT':
             keys = self.upsert_key or self._get_table_primary_key(postgres_hook)
-            where_statement = ' and '.join([f'{self.table}.{k} = {copy_destination}.{k}' for k in keys])
+            where_statement = ' AND '.join([f'{self.table}.{k} = {copy_destination}.{k}' for k in keys])
             sql = f"""
             CREATE TABLE {copy_destination} (LIKE {destination});
             {copy_statement}

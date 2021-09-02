@@ -113,7 +113,7 @@ class TestS3ToRedshiftTransfer(unittest.TestCase):
 
     @mock.patch("boto3.session.Session")
     @mock.patch("airflow.providers.postgres.hooks.postgres.PostgresHook.run")
-    def test_truncate(self, mock_run, mock_session):
+    def test_deprecated_truncate(self, mock_run, mock_session):
         access_key = "aws_access_key_id"
         secret_key = "aws_secret_access_key"
         mock_session.return_value = Session(access_key, secret_key)
@@ -152,6 +152,103 @@ class TestS3ToRedshiftTransfer(unittest.TestCase):
                     BEGIN;
                     {delete_statement}
                     {copy_statement}
+                    COMMIT
+                    """
+        assert_equal_ignore_multiple_spaces(self, mock_run.call_args[0][0], transaction)
+
+        assert mock_run.call_count == 1
+
+    @mock.patch("boto3.session.Session")
+    @mock.patch("airflow.providers.postgres.hooks.postgres.PostgresHook.run")
+    def test_replace(self, mock_run, mock_session):
+        access_key = "aws_access_key_id"
+        secret_key = "aws_secret_access_key"
+        mock_session.return_value = Session(access_key, secret_key)
+        mock_session.return_value.access_key = access_key
+        mock_session.return_value.secret_key = secret_key
+        mock_session.return_value.token = None
+
+        schema = "schema"
+        table = "table"
+        s3_bucket = "bucket"
+        s3_key = "key"
+        copy_options = ""
+
+        op = S3ToRedshiftOperator(
+            schema=schema,
+            table=table,
+            s3_bucket=s3_bucket,
+            s3_key=s3_key,
+            copy_options=copy_options,
+            method='REPLACE',
+            redshift_conn_id="redshift_conn_id",
+            aws_conn_id="aws_conn_id",
+            task_id="task_id",
+            dag=None,
+        )
+        op.execute(None)
+        copy_statement = '''
+                        COPY schema.table
+                        FROM 's3://bucket/key'
+                        with credentials
+                        'aws_access_key_id=aws_access_key_id;aws_secret_access_key=aws_secret_access_key'
+                        ;
+                     '''
+        delete_statement = f'DELETE FROM {schema}.{table};'
+        transaction = f"""
+                    BEGIN;
+                    {delete_statement}
+                    {copy_statement}
+                    COMMIT
+                    """
+        assert_equal_ignore_multiple_spaces(self, mock_run.call_args[0][0], transaction)
+
+        assert mock_run.call_count == 1
+
+    @mock.patch("boto3.session.Session")
+    @mock.patch("airflow.providers.postgres.hooks.postgres.PostgresHook.run")
+    def test_upsert(self, mock_run, mock_session):
+        access_key = "aws_access_key_id"
+        secret_key = "aws_secret_access_key"
+        mock_session.return_value = Session(access_key, secret_key)
+        mock_session.return_value.access_key = access_key
+        mock_session.return_value.secret_key = secret_key
+        mock_session.return_value.token = None
+
+        schema = "schema"
+        table = "table"
+        s3_bucket = "bucket"
+        s3_key = "key"
+        copy_options = ""
+
+        op = S3ToRedshiftOperator(
+            schema=schema,
+            table=table,
+            s3_bucket=s3_bucket,
+            s3_key=s3_key,
+            copy_options=copy_options,
+            method='UPSERT',
+            redshift_conn_id="redshift_conn_id",
+            aws_conn_id="aws_conn_id",
+            task_id="task_id",
+            dag=None,
+        )
+        op.execute(None)
+        op._get_table_primary_key = mock.Mock(return_value=['id'])
+
+        copy_statement = f'''
+                        COPY #{table}
+                        FROM 's3://bucket/key'
+                        with credentials
+                        'aws_access_key_id=aws_access_key_id;aws_secret_access_key=aws_secret_access_key'
+                        ;
+                     '''
+        transaction = f"""
+                    CREATE TABLE #{table} (LIKE {schema}.{table});
+                    {copy_statement}
+                    BEGIN;
+                    DELETE FROM {schema}.{table} USING #{table} WHERE {table}.id = #{table}.id;
+                    INSERT INTO {schema}.{table} SELECT * FROM #{table};
                     COMMIT
                     """
         assert_equal_ignore_multiple_spaces(self, mock_run.call_args[0][0], transaction)
