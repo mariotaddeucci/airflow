@@ -51,6 +51,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_from_directory,
     session as flask_session,
     url_for,
 )
@@ -2968,6 +2969,16 @@ class Airflow(AirflowBaseView):
         # avoid spaces to reduce payload size
         return htmlsafe_json_dumps(tree_data, separators=(',', ':'))
 
+    @expose('/robots.txt')
+    @action_logging
+    def robots(self):
+        """
+        Returns a robots.txt file for blocking certain search engine crawlers. This mitigates some
+        of the risk associated with exposing Airflow to the public internet, however it does not
+        address the real security risks associated with such a deployment.
+        """
+        return send_from_directory(current_app.static_folder, 'robots.txt')
+
 
 class ConfigurationView(AirflowBaseView):
     """View to show Airflow Configurations"""
@@ -4283,7 +4294,10 @@ class DagDependenciesView(AirflowBaseView):
         """Display DAG dependencies"""
         title = "DAG Dependencies"
 
-        if timezone.utcnow() > self.last_refresh + self.refresh_interval:
+        if not self.nodes or not self.edges:
+            self._calculate_graph()
+            self.last_refresh = timezone.utcnow()
+        elif timezone.utcnow() > self.last_refresh + self.refresh_interval:
             max_last_updated = SerializedDagModel.get_max_last_updated_datetime()
             if max_last_updated is None or max_last_updated > self.last_refresh:
                 self._calculate_graph()
@@ -4294,7 +4308,7 @@ class DagDependenciesView(AirflowBaseView):
             title=title,
             nodes=self.nodes,
             edges=self.edges,
-            last_refresh=self.last_refresh.strftime("%Y-%m-%d %H:%M:%S"),
+            last_refresh=self.last_refresh,
             arrange=conf.get("webserver", "dag_orientation"),
             width=request.args.get("width", "100%"),
             height=request.args.get("height", "800"),

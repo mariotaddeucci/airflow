@@ -16,24 +16,25 @@
 # specific language governing permissions and limitations
 # under the License.
 
-"""
-Example usage of the TriggerDagRunOperator. This example holds 2 DAGs:
-1. 1st DAG (example_trigger_controller_dag) holds a TriggerDagRunOperator, which will trigger the 2nd DAG
-2. 2nd DAG (example_trigger_target_dag) which will be triggered by the TriggerDagRunOperator in the 1st DAG
-"""
-from airflow import DAG
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow import models
+from airflow.providers.google.suite.transfers.sql_to_sheets import SQLToGoogleSheetsOperator
 from airflow.utils.dates import days_ago
 
-with DAG(
-    dag_id="example_trigger_controller_dag",
-    start_date=days_ago(2),
-    schedule_interval="@once",
-    tags=['example'],
+SQL = "select 1 as my_col"
+NEW_SPREADSHEET_ID = "123"
+
+with models.DAG(
+    "example_sql_to_sheets",
+    start_date=days_ago(1),
+    schedule_interval=None,  # Override to match your needs
+    tags=["example"],
 ) as dag:
 
-    trigger = TriggerDagRunOperator(
-        task_id="test_trigger_dagrun",
-        trigger_dag_id="example_trigger_target_dag",  # Ensure this equals the dag_id of the DAG to trigger
-        conf={"message": "Hello World"},
+    # [START upload_sql_to_sheets]
+    upload_gcs_to_sheet = SQLToGoogleSheetsOperator(
+        task_id="upload_sql_to_sheet",
+        sql=SQL,
+        sql_conn_id="database_conn_id",
+        spreadsheet_id=NEW_SPREADSHEET_ID,
     )
+    # [END upload_sql_to_sheets]
