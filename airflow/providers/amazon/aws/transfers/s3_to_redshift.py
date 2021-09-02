@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import warnings
 from contextlib import closing
 from typing import List, Optional, Union
 
@@ -105,6 +106,14 @@ class S3ToRedshiftOperator(BaseOperator):
         self.autocommit = autocommit
         self.method = method
         self.upsert_keys = upsert_keys
+
+        if kwargs['truncate_table']:
+            self.method = 'REPLACE'
+            warnings.warn(
+                """`truncate_table` parameter is deprecated. Please use `method`.""",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         if self.method not in AVAILABLE_METHODS:
             raise AirflowException(f'Method not found! Available methods: {AVAILABLE_METHODS}')

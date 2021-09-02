@@ -20,8 +20,10 @@
 import unittest
 from unittest import mock
 
+import pytest
 from boto3.session import Session
 
+from airflow.exceptions import AirflowException
 from airflow.providers.amazon.aws.transfers.s3_to_redshift import S3ToRedshiftOperator
 from tests.test_utils.asserts import assert_equal_ignore_multiple_spaces
 
@@ -207,3 +209,19 @@ class TestS3ToRedshiftTransfer(unittest.TestCase):
             'column_list',
             'copy_options',
         )
+
+    def test_execute_unavailable_method(self):
+        """
+        Test execute unavailable method
+        """
+        operator = S3ToRedshiftOperator(
+            schema="schema",
+            table="table",
+            s3_bucket="bucket",
+            s3_key="key",
+            method="unavailable_method",
+            dag=None,
+        )
+
+        with pytest.raises(AirflowException):
+            operator.execute({})
