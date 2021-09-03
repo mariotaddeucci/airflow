@@ -173,7 +173,7 @@ class S3ToRedshiftOperator(BaseOperator):
             COMMIT
             """
         elif self.method == 'UPSERT':
-            keys = self.upsert_key or self._get_table_primary_key(postgres_hook)
+            keys = self.upsert_keys or self._get_table_primary_key(postgres_hook)
             where_statement = ' AND '.join([f'{self.table}.{k} = {copy_destination}.{k}' for k in keys])
             sql = f"""
             CREATE TABLE {copy_destination} (LIKE {destination});

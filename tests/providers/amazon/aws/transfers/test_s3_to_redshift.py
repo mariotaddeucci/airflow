@@ -237,7 +237,7 @@ class TestS3ToRedshiftTransfer(unittest.TestCase):
         op._get_table_primary_key = mock.Mock(return_value=['id'])
 
         copy_statement = f'''
-                        COPY #{table}
+                        COPY #table
                         FROM 's3://bucket/key'
                         with credentials
                         'aws_access_key_id=aws_access_key_id;aws_secret_access_key=aws_secret_access_key'
@@ -317,6 +317,7 @@ class TestS3ToRedshiftTransfer(unittest.TestCase):
             s3_bucket="bucket",
             s3_key="key",
             method="unavailable_method",
+            task_id="task_id",
             dag=None,
         )
 
