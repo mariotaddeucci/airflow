@@ -233,11 +233,11 @@ class TestS3ToRedshiftTransfer(unittest.TestCase):
             task_id="task_id",
             dag=None,
         )
-        op.execute(None)
         op._get_table_primary_key = mock.Mock(return_value=['id'])
+        op.execute(None)
 
         copy_statement = f'''
-                        COPY #table
+                        COPY #{table}
                         FROM 's3://bucket/key'
                         with credentials
                         'aws_access_key_id=aws_access_key_id;aws_secret_access_key=aws_secret_access_key'
@@ -312,7 +312,7 @@ class TestS3ToRedshiftTransfer(unittest.TestCase):
         Test execute unavailable method
         """
         with pytest.raises(AirflowException):
-            operator = S3ToRedshiftOperator(
+            S3ToRedshiftOperator(
                 schema="schema",
                 table="table",
                 s3_bucket="bucket",
