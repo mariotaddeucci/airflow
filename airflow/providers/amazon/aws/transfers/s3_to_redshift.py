@@ -94,13 +94,14 @@ class S3ToRedshiftOperator(BaseOperator):
         **kwargs,
     ) -> None:
 
-        if kwargs.get('truncate_table', False):
-            method = 'REPLACE'
+        if 'truncate_table' in kwargs:
             warnings.warn(
-                """`truncate_table` parameter is deprecated. Please use `method` parameter.""",
+                """`truncate_table` is deprecated. Please use `REPLACE` method.""",
                 DeprecationWarning,
                 stacklevel=2,
             )
+            if kwargs['truncate_table']:
+                method = 'REPLACE'
             kwargs.pop('truncate_table', None)
 
         super().__init__(**kwargs)
