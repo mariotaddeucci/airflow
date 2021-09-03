@@ -101,7 +101,7 @@ class S3ToRedshiftOperator(BaseOperator):
                 DeprecationWarning,
                 stacklevel=2,
             )
-            kwargs.pop('provide_context', None)
+            kwargs.pop('truncate_table', None)
 
         super().__init__(**kwargs)
         self.schema = schema
