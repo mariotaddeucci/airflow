@@ -93,6 +93,15 @@ class S3ToRedshiftOperator(BaseOperator):
         upsert_keys: Optional[List[str]] = None,
         **kwargs,
     ) -> None:
+
+        if kwargs.get('truncate_table', False):
+            self.method = 'REPLACE'
+            warnings.warn(
+                """`truncate_table` parameter is deprecated. Please use `method` parameter.""",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         super().__init__(**kwargs)
         self.schema = schema
         self.table = table
@@ -106,14 +115,6 @@ class S3ToRedshiftOperator(BaseOperator):
         self.autocommit = autocommit
         self.method = method
         self.upsert_keys = upsert_keys
-
-        if kwargs.get('truncate_table', False):
-            self.method = 'REPLACE'
-            warnings.warn(
-                """`truncate_table` parameter is deprecated. Please use `method` parameter.""",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         if self.method not in AVAILABLE_METHODS:
             raise AirflowException(f'Method not found! Available methods: {AVAILABLE_METHODS}')
