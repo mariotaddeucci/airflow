@@ -311,15 +311,13 @@ class TestS3ToRedshiftTransfer(unittest.TestCase):
         """
         Test execute unavailable method
         """
-        operator = S3ToRedshiftOperator(
-            schema="schema",
-            table="table",
-            s3_bucket="bucket",
-            s3_key="key",
-            method="unavailable_method",
-            task_id="task_id",
-            dag=None,
-        )
-
         with pytest.raises(AirflowException):
-            operator.execute({})
+            operator = S3ToRedshiftOperator(
+                schema="schema",
+                table="table",
+                s3_bucket="bucket",
+                s3_key="key",
+                method="unavailable_method",
+                task_id="task_id",
+                dag=None,
+            )
